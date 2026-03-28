@@ -209,6 +209,8 @@ Consider, for example, concepts of fariness, inequality, social structures, marg
 
 
 ```
+See below for my response.
+```
 
 This article was an interesting read and brought up themes that I encounter on a daily basis as a social psychologist, especially in a world trending towards categorization and separation. In particular, it was interesting to read about Pakistan’s registry, since I don’t have much background with large databases or how information is encoded and retrieved from said databases. However, I am very familiar with the idea that categories are mostly social constructs, such as gender, race, family, socioeconomic status, etc. 
 
@@ -219,6 +221,3 @@ Similarly, as a mixed-methods researcher, it is glaringly apparent to me that th
 Though not exactly a database or data system, medical data is also rife with this, as the baseline comparison group for pretty much all treatment and conditions is white men. Diagnostic criteria for most conditions is based on how the condition presents in white men, even though it may present differently for other groups of people. Relatedly, insurance is probably a database and database system that is rife with all sorts of values imbedded in it. Though largely driven by profit margins, the norms of a “healthy individual” are based on all sorts of prototypes like young white man, or what a prototypical healthy individual at the age of 40 is.
 
 I could probably speak at quite a length about how all sorts of socially constructed norms permeate society, but for the sake of brevity, I will wrap up with the reflection that the more you look, the more you can see, every norm or value or system is not objectively created, but based on some subjective set of values, often chosen by whoever is in power at the time to legitimize and normalize conditions favouring themselves as the moral high ground. 
-
-
-```
