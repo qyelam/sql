@@ -104,7 +104,10 @@ LIMIT 24;
 at the farmer’s market by counting the vendor booth assignments per vendor_id. */
 --QUERY 7
 
-
+SELECT vendor_id,
+COUNT(booth_number) as num_booth
+FROM vendor_booth_assignments
+GROUP BY vendor_id;
 
 
 --END QUERY
@@ -118,7 +121,18 @@ HINT: This query requires you to join two tables, use an aggregate function, and
 --QUERY 8
 
 
+SELECT
+customer_last_name,
+customer_first_name,
+c.customer_id,
+ROUND(SUM(quantity*cost_to_customer_per_qty), 2) as total_spend
 
+FROM customer as c
+INNER JOIN customer_purchases as cp
+		ON c.customer_id = cp.customer_id
+GROUP BY c.customer_id
+HAVING total_spend > 2000
+ORDER BY customer_last_name, customer_first_name;
 
 --END QUERY
 
@@ -136,8 +150,14 @@ VALUES(col1,col2,col3,col4,col5)
 */
 --QUERY 9
 
+CREATE TABLE temp.new_vendor AS
 
+-- definition of the table
+SELECT *
+FROM vendor;
 
+INSERT INTO temp.new_vendor (vendor_id, vendor_name, vendor_type, vendor_owner_first_name, vendor_owner_last_name)
+VALUES ('10', "Thomas's Superfood Store", 'Fresh Focused', 'Thomas', 'Rosenthal');
 
 --END QUERY
 
