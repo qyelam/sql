@@ -56,7 +56,11 @@ The store wants to keep customer addresses. Propose two architectures for the CU
 **HINT:** search type 1 vs type 2 slowly changing dimensions. 
 
 ```
-Your answer...
+Type 1 overwrites changes while type 2 retains changes by adding new rows.
+
+The Type 1 would only need 2 columns: customer_id, address.
+The Type 2 would need 3 columns: customer_id, address, update_date.
+
 ```
 
 ***
@@ -191,5 +195,9 @@ Consider, for example, concepts of labour, bias, LLM proliferation, moderating c
 
 
 ```
-Your thoughts...
+This is not surprising to me as a psychology PhD student, since I hear about the basic workings of how neural nets and AI is trained. I think there are a lot of ethical issues with AI that most people don’t think about, mostly because of the saying “Trash in, trash out”.
+The perception is that AI is good at categorizing things, but as the article points out, how it makes distinctions about what is concluded in a category is really just an amalgamation of all the ways people/prior data have categorized the information. That means that any pre-existing biases will be replicated by AI. For example, if Black Americans are disproportionately charged for crimes and many pictures in the criminal database are of Black Americans, then an agent extrapolating from this data may also disproportionately categorize Black Americans as criminals. There are many such cases where AS is found to perpetuate existing biases. If people continues to use AI without thinking critically, many biases may be perpetuated, with data or certain groups of people being excluded or penalized. This also means that AI likely currently has a fairly Western leaning, since a lot of the training sets are from reddit or other English-hosted data.
+Another theme is the hidden labour, for which no one is compensated. I’ve heard some stories about how Captcha is training AI, or Pokemon Go was providing all sorts of location information. There are a lot of concerns about who is providing the data, what the data is being used for, and all sorts of implications about data privacy.
+AI is proliferating rapidly, and I hope it’s growth and adoption doesn’t outpace the ethical and labour considerations that would protect the common person in the world today.
+
 ```
