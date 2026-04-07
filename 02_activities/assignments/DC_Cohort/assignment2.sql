@@ -302,6 +302,7 @@ FROM(
 	)
 WHERE rn_max = 1
 
+--Option 1, which doesn't put the correct quantity with that row. Changing where doesn't do this either.
 UPDATE product_units
 SET current_quantity = last_quant
 FROM( 
@@ -310,11 +311,19 @@ FROM product_units
 FULL OUTER JOIN last_quantity
 	ON last_quantity.product_id=product_units.product_id
 )
---WHERE last_quantity.product_id=product_units.product_id
+WHERE product_units.product_id = 3
+--WHERE lq.product_id = pu.product_id
 
+--Option 2, which also doesn't put the correct quantity with that row. Changing where doesn't do this either.
+UPDATE product_units
+SET current_quantity = lq.last_quant
+FROM product_units as pu
+FULL OUTER JOIN last_quantity as lq
+ON lq.product_id = pu.product_id
+WHERE product_units.product_id = 4
+--WHERE lq.product_id = pu.product_id
 
+--I cannot figure out how to make the correct value that matches the row update in. When I try WHERE lq.product_id = pu.product_id, this just replaces all rows with the same value.
 
 --END QUERY
-
-
 
