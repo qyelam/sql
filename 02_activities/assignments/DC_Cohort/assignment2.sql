@@ -23,7 +23,9 @@ Edit the appropriate columns -- you're making two edits -- and the NULL rows wil
 All the other rows will remain the same. */
 --QUERY 1
 
-
+SELECT 
+product_name || ', ' || ifnull(product_size, "") || ' (' || coalesce(product_qty_type, product_size, 'unit') || ')'
+FROM product;
 
 
 --END QUERY
@@ -41,8 +43,10 @@ HINT: One of these approaches uses ROW_NUMBER() and one uses DENSE_RANK().
 Filter the visits to dates before April 29, 2022. */
 --QUERY 2
 
-
-
+SELECT *,
+dense_rank() OVER(PARTITION BY customer_id ORDER BY market_date ASC) as visit
+FROM customer_purchases
+WHERE market_date < '2022-04-29';
 
 --END QUERY
 
@@ -53,8 +57,13 @@ only the customer’s most recent visit.
 HINT: Do not use the previous visit dates filter. */
 --QUERY 3
 
-
-
+SELECT x.*
+FROM
+	(SELECT *,
+	dense_rank() OVER(PARTITION BY customer_id ORDER BY market_date DESC) as visit
+	FROM customer_purchases
+	WHERE market_date < '2022-04-29') as x
+WHERE x.visit = 1;
 
 --END QUERY
 
@@ -65,9 +74,21 @@ customer_purchases table that indicates how many different times that customer h
 You can make this a running count by including an ORDER BY within the PARTITION BY if desired.
 Filter the visits to dates before April 29, 2022. */
 --QUERY 4
+SELECT *,
+COUNT(product_id) as product_repeats
+FROM customer_purchases
+WHERE market_date < '2022-04-29'
+GROUP BY customer_id, product_id; 
 
 
-
+/* Code to check if the above query worked
+DROP VIEW IF EXISTS test;
+CREATE VIEW IF NOT EXISTS test AS
+SELECT customer_id, market_date, product_id
+FROM customer_purchases
+WHERE market_date < '2022-04-29'
+ORDER BY customer_id, product_id, market_date
+*/
 
 --END QUERY
 
@@ -85,8 +106,9 @@ Remove any trailing or leading whitespaces. Don't just use a case statement for 
 Hint: you might need to use INSTR(product_name,'-') to find the hyphens. INSTR will help split the column. */
 --QUERY 5
 
-
-
+SELECT DISTINCT *,
+replace(replace(substr(product_name, nullif(INSTR(product_name, '-'), 0)),' ', ''), '-', '') as description
+FROM product;
 
 --END QUERY
 
@@ -94,8 +116,11 @@ Hint: you might need to use INSTR(product_name,'-') to find the hyphens. INSTR w
 /* 2. Filter the query to show any product_size value that contain a number with REGEXP. */
 --QUERY 6
 
+SELECT DISTINCT *,
+replace(replace(substr(product_name, nullif(INSTR(product_name, '-'), 0)),' ', ''), '-', '') as description
+FROM product
 
-
+WHERE product_size REGEXP '\d'; 
 
 --END QUERY
 
@@ -111,7 +136,40 @@ HINT: There are a possibly a few ways to do this query, but if you're struggling
 with a UNION binding them. */
 --QUERY 7
 
+DROP TABLE IF EXISTS temp.vendor_daily_sales; 
+CREATE TEMP TABLE IF NOT EXISTS temp.vendor_daily_sales AS
+SELECT 
+market_date,
+SUM(quantity*cost_to_customer_per_qty) as sales
+	
+FROM customer_purchases cp
+GROUP BY market_date;
 
+SELECT market_date, sales, rn_max as [row_number]
+FROM(
+	SELECT 
+	market_date,
+	sales,
+	row_number() OVER(ORDER BY sales DESC) as rn_max
+	
+	FROM vendor_daily_sales 
+	GROUP BY market_date	
+	)
+WHERE rn_max = 1
+
+UNION 
+
+SELECT market_date, sales, rn_min as [row_number]
+FROM(
+	SELECT 
+	market_date,
+	sales,
+	row_number() OVER(ORDER BY sales ASC) as rn_min
+	
+	FROM vendor_daily_sales 
+	GROUP BY market_date	
+	)
+WHERE rn_min = 1;
 
 
 --END QUERY
@@ -132,7 +190,22 @@ How many customers are there (y).
 Before your final group by you should have the product of those two queries (x*y).  */
 --QUERY 8
 
-
+WITH Quintuple_Sales AS(
+SELECT vendor_name, product_name, customer_id, original_price, quintuple_price
+FROM(
+SELECT v.vendor_id, vendor_name, vi.product_id, product_name, original_price,
+original_price*5 AS quintuple_price
+FROM vendor_inventory as vi
+LEFT JOIN vendor as v
+ ON v.vendor_id = vi.vendor_id
+LEFT JOIN product as p
+	ON vi.product_id = p.product_id
+GROUP BY vendor_name, product_name)
+CROSS JOIN customer)
+SELECT vendor_name, product_name, quintuple_price,
+SUM(quintuple_price) as total_sales
+FROM Quintuple_Sales
+GROUP BY product_name;
 
 
 --END QUERY
@@ -145,7 +218,13 @@ It should use all of the columns from the product table, as well as a new column
 Name the timestamp column `snapshot_timestamp`. */
 --QUERY 9
 
-
+DROP TABLE IF EXISTS temp.product_units;
+CREATE TEMP TABLE product_units AS
+	SELECT * FROM product
+	WHERE product_qty_type = 'unit';
+	
+ALTER TABLE product_units
+ADD 'snapshot_timestamp' 'CURRENT_TIMESTAMP';
 
 
 --END QUERY
@@ -155,7 +234,8 @@ Name the timestamp column `snapshot_timestamp`. */
 This can be any product you desire (e.g. add another record for Apple Pie). */
 --QUERY 10
 
-
+INSERT INTO product_units
+VALUES(6, 'Cut Zinnias Bouquet', 'medium', 5, 'unit', datetime('now'));
 
 
 --END QUERY
@@ -163,11 +243,12 @@ This can be any product you desire (e.g. add another record for Apple Pie). */
 
 -- DELETE
 /* 1. Delete the older record for the whatever product you added. 
-
 HINT: If you don't specify a WHERE clause, you are going to have a bad time.*/
 --QUERY 11
 
-
+DELETE FROM product_units
+--SELECT * FROM product_units --Checking for the correct row
+WHERE product_id = 6 AND snapshot_timestamp IS NULL;
 
 
 --END QUERY
@@ -191,10 +272,80 @@ Finally, make sure you have a WHERE statement to update the right row,
 When you have all of these components, you can run the update statement. */
 --QUERY 12
 
+ALTER TABLE product_units
+ADD current_quantity INT;
+
+--Rank by order date
+DROP TABLE IF EXISTS temp.vendor_quantity; 
+CREATE TEMP TABLE IF NOT EXISTS temp.vendor_quantity AS
+SELECT  p.product_id, COALESCE(quantity,0) as curr_quantity 
+    FROM product_units p
+    LEFT JOIN (
+      SELECT *
+      ,ROW_NUMBER() OVER( PARTITION BY vi.product_id ORDER BY market_date DESC) AS rn
+      FROM vendor_inventory vi 
+    ) vi ON p.product_id  = vi.product_id
+    WHERE rn = 1 
+    OR rn IS NULL	  
+
+UPDATE product_units
+SET current_quantity = curr_quantity
+FROM vendor_quantity
+WHERE product_units.product_id = vendor_quantity.product_id
+
+	
+/* My first attempt. Please see the revised attempt above and ignore this chunk.
+DROP TABLE IF EXISTS temp.vendor_quantity; 
+CREATE TEMP TABLE IF NOT EXISTS temp.vendor_quantity AS
+SELECT 
+market_date,
+product_id,
+quantity
+	
+FROM vendor_inventory as vi
+GROUP BY product_id, market_date;
 
 
+--Find most recent quantity
+DROP TABLE IF EXISTS temp.last_quantity; 
+CREATE TEMP TABLE IF NOT EXISTS temp.last_quantity AS
+SELECT market_date, product_id, quantity, last_quant, rn_max as [row_number]
+FROM(
+	SELECT 
+	market_date,
+	product_id,
+	quantity,
+	quantity AS last_quant,
+	rank() OVER(PARTITION BY product_id ORDER BY market_date DESC) as rn_max
+	
+	FROM vendor_quantity 		
+	)
+WHERE rn_max = 1
 
+--Option 1, which doesn't put the correct quantity with that row. Changing where doesn't do this either.
+UPDATE product_units
+SET current_quantity = last_quant
+FROM( 
+SELECT *
+FROM product_units
+FULL OUTER JOIN last_quantity
+	ON last_quantity.product_id=product_units.product_id
+)
+WHERE product_units.product_id = 3
+--WHERE lq.product_id = pu.product_id
+
+--Option 2, which also doesn't put the correct quantity with that row. Changing where doesn't do this either.
+UPDATE product_units
+SET current_quantity = lq.last_quant
+FROM product_units as pu
+FULL OUTER JOIN last_quantity as lq
+ON lq.product_id = pu.product_id
+WHERE product_units.product_id = 4
+--WHERE lq.product_id = pu.product_id
+
+--I cannot figure out how to make the correct value that matches the row update in. When I try WHERE lq.product_id = pu.product_id, this just replaces all rows with the same value.
+
+*/
+	  
 --END QUERY
-
-
 
