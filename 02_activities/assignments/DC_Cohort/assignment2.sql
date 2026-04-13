@@ -275,6 +275,26 @@ When you have all of these components, you can run the update statement. */
 ALTER TABLE product_units
 ADD current_quantity INT;
 
+--Rank by order date
+DROP TABLE IF EXISTS temp.vendor_quantity; 
+CREATE TEMP TABLE IF NOT EXISTS temp.vendor_quantity AS
+SELECT  p.product_id, COALESCE(quantity,0) as curr_quantity 
+    FROM product_units p
+    LEFT JOIN (
+      SELECT *
+      ,ROW_NUMBER() OVER( PARTITION BY vi.product_id ORDER BY market_date DESC) AS rn
+      FROM vendor_inventory vi 
+    ) vi ON p.product_id  = vi.product_id
+    WHERE rn = 1 
+    OR rn IS NULL	  
+
+UPDATE product_units
+SET current_quantity = curr_quantity
+FROM vendor_quantity
+WHERE product_units.product_id = vendor_quantity.product_id
+
+	
+/* My first attempt. Please see the revised attempt above and ignore this chunk.
 DROP TABLE IF EXISTS temp.vendor_quantity; 
 CREATE TEMP TABLE IF NOT EXISTS temp.vendor_quantity AS
 SELECT 
@@ -325,5 +345,7 @@ WHERE product_units.product_id = 4
 
 --I cannot figure out how to make the correct value that matches the row update in. When I try WHERE lq.product_id = pu.product_id, this just replaces all rows with the same value.
 
+*/
+	  
 --END QUERY
 
